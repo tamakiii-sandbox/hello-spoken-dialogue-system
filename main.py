@@ -1,9 +1,6 @@
 # main.py
 import speech_recognition as sr
-from gtts import gTTS
-from io import BytesIO
-from pydub import AudioSegment
-from pydub.playback import play
+import pyttsx3
 from utility import send_to_llama_api
 
 # Initialize speech recognizer and microphone
@@ -13,13 +10,27 @@ mic = sr.Microphone()
 # Llama API endpoint (replace with your own)
 llama_api_url = "http://localhost:11434/api/generate"
 
+# Initialize pyttsx3 engine
+engine = pyttsx3.init()
+
 def synthesize_speech(text):
-    tts = gTTS(text)
-    fp = BytesIO()
-    tts.write_to_fp(fp)
-    fp.seek(0)
-    audio_segment = AudioSegment.from_file(fp, format="mp3")
-    play(audio_segment)
+    engine.say(text)
+    engine.runAndWait()
+
+def process_llama_response(response):
+    buffer = []
+    for chunk in response:
+        if chunk:
+            buffer.append(chunk)
+            if '.' in chunk or '?' in chunk or '!' in chunk:
+                partial_response = ''.join(buffer)
+                print("Partial response:", partial_response)
+                synthesize_speech(partial_response)
+                buffer = []
+    if buffer:
+        remaining_response = ''.join(buffer)
+        print("Remaining response:", remaining_response)
+        synthesize_speech(remaining_response)
 
 while True:
     with mic as source:
@@ -33,10 +44,9 @@ while True:
 
         # Send text to Llama API and get the response
         response = send_to_llama_api(text, llama_api_url)
-        print("Llama response:", response)
 
-        # Synthesize speech using gTTS
-        synthesize_speech(response)
+        # Process and synthesize speech for the response
+        process_llama_response(response)
 
     except sr.UnknownValueError:
         print("Could not understand audio")

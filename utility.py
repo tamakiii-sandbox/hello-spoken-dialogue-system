@@ -4,7 +4,9 @@ import json
 def send_to_llama_api(text, llama_api_url, stream=True):
     # Prepare the request payload
     payload = {
+        # "model": "llama3",
         "model": "gemma:2b",
+        "system": "You are a helpful, smart, kind, and efficient real-time conversational AI assistant. You always fulfill the users requests to the best of your ability. Basically, keep your responses short.",
         "prompt": text,
         "stream": stream
     }
