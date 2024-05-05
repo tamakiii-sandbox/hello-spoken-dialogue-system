@@ -1,8 +1,10 @@
+# main.py
 import speech_recognition as sr
 from gtts import gTTS
-import requests
-import os
-import json
+from io import BytesIO
+from pydub import AudioSegment
+from pydub.playback import play
+from utility import send_to_llama_api
 
 # Initialize speech recognizer and microphone
 r = sr.Recognizer()
@@ -11,39 +13,13 @@ mic = sr.Microphone()
 # Llama API endpoint (replace with your own)
 llama_api_url = "http://localhost:11434/api/generate"
 
-def send_to_llama_api(text, llama_api_url, stream=True):
-    # Prepare the request payload
-    payload = {
-        "model": "gemma:2b",
-        "prompt": text,
-        "stream": stream
-    }
-
-    # Send the request to the Llama API
-    response = requests.post(llama_api_url, json=payload, stream=stream)
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        if stream:
-            # Process the response as a stream
-            generated_text = ""
-            for chunk in response.iter_lines(decode_unicode=True):
-                if chunk:
-                    # Parse the JSON object
-                    json_data = json.loads(chunk)
-                    # Extract the generated text
-                    generated_text += json_data["response"]
-                    # Check if the response is complete
-                    if json_data["done"]:
-                        return generated_text
-        else:
-            # Process the response as a single JSON object
-            json_data = response.json()
-            # Extract the generated text
-            generated_text = json_data["response"]
-            return generated_text
-    else:
-        raise Exception(f"Request failed with status code: {response.status_code}")
+def synthesize_speech(text):
+    tts = gTTS(text)
+    fp = BytesIO()
+    tts.write_to_fp(fp)
+    fp.seek(0)
+    audio_segment = AudioSegment.from_file(fp, format="mp3")
+    play(audio_segment)
 
 while True:
     with mic as source:
@@ -59,10 +35,8 @@ while True:
         response = send_to_llama_api(text, llama_api_url)
         print("Llama response:", response)
 
-        # Convert response to speech
-        tts = gTTS(response)
-        tts.save("response.mp3")
-        os.system("afplay response.mp3")
+        # Synthesize speech using gTTS
+        synthesize_speech(response)
 
     except sr.UnknownValueError:
         print("Could not understand audio")
