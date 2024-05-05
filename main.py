@@ -2,13 +2,14 @@ import speech_recognition as sr
 from gtts import gTTS
 import requests
 import os
+import json
 
 # Initialize speech recognizer and microphone
 r = sr.Recognizer()
 mic = sr.Microphone()
 
 # Llama API endpoint (replace with your own)
-llama_api_url = "https://your-llama-api-url"
+llama_api_url = "http://localhost:11434/api/generate"
 
 def send_to_llama_api(text, llama_api_url, stream=True):
     # Prepare the request payload
@@ -25,18 +26,16 @@ def send_to_llama_api(text, llama_api_url, stream=True):
     if response.status_code == 200:
         if stream:
             # Process the response as a stream
+            generated_text = ""
             for chunk in response.iter_lines(decode_unicode=True):
                 if chunk:
                     # Parse the JSON object
                     json_data = json.loads(chunk)
                     # Extract the generated text
-                    generated_text = json_data["response"]
+                    generated_text += json_data["response"]
                     # Check if the response is complete
                     if json_data["done"]:
                         return generated_text
-                    else:
-                        # Optionally, you can yield the partial response for real-time display
-                        yield generated_text
         else:
             # Process the response as a single JSON object
             json_data = response.json()
@@ -63,7 +62,7 @@ while True:
         # Convert response to speech
         tts = gTTS(response)
         tts.save("response.mp3")
-        os.system("mpg321 response.mp3")
+        os.system("afplay response.mp3")
 
     except sr.UnknownValueError:
         print("Could not understand audio")
